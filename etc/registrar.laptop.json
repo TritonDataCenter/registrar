@@ -1,0 +1,19 @@
+{
+        "registration": {
+                "domain": "1.moray.us-east-1.sds.joyent.com",
+                "type": "load_balancer",
+                "service": {
+                        "srvce": "_http",
+                        "proto": "_tcp",
+                        "ttl": 60,
+                        "port": 80
+                }
+        },
+        "zookeeper": {
+                "servers": [ {
+                        "host": "10.88.88.132",
+                        "port": 2181
+                } ],
+                "timeout": 1000
+        }
+}
