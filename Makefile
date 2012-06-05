@@ -53,7 +53,7 @@ PATH	:= $(NODE_INSTALL)/bin:${PATH}
 #
 .PHONY: all
 all: $(SMF_MANIFESTS) | $(NPM_EXEC) $(REPO_DEPS)
-	$(NPM) rebuild
+	$(NPM) install
 
 .PHONY: test
 test:
