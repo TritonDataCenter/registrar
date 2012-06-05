@@ -31,6 +31,24 @@ include ./tools/mk/Makefile.node_deps.defs
 include ./tools/mk/Makefile.smf.defs
 
 #
+# Variables
+#
+
+# Mountain Gorilla-spec'd versioning.
+
+ROOT                    := $(shell pwd)
+RELEASE_TARBALL         := registrar-pkg-$(STAMP).tar.bz2
+TMPDIR                  := /tmp/$(STAMP)
+
+
+#
+# Env vars
+#
+PATH	:= $(NODE_INSTALL)/bin:${PATH}
+
+
+
+#
 # Repo-specific targets
 #
 .PHONY: all
@@ -40,6 +58,34 @@ all: $(SMF_MANIFESTS) | $(NPM_EXEC) $(REPO_DEPS)
 .PHONY: test
 test:
 	@echo "No tests"
+
+.PHONY: release
+release: all docs $(SMF_MANIFESTS)
+	@echo "Building $(RELEASE_TARBALL)"
+	@mkdir -p $(TMPDIR)/root/opt/smartdc/registrar
+	@mkdir -p $(TMPDIR)/site
+	@touch $(TMPDIR)/site/.do-not-delete-me
+	@mkdir -p $(TMPDIR)/root
+	@mkdir -p $(TMPDIR)/root/opt/smartdc/registrar/etc
+	cp -r   $(ROOT)/build \
+		$(ROOT)/main.js \
+		$(ROOT)/node_modules \
+		$(ROOT)/package.json \
+		$(ROOT)/smf \
+		$(TMPDIR)/root/opt/smartdc/registrar
+	(cd $(TMPDIR) && $(TAR) -jcf $(ROOT)/$(RELEASE_TARBALL) root site)
+	@rm -rf $(TMPDIR)
+
+
+.PHONY: publish
+publish: release
+	@if [[ -z "$(BITS_DIR)" ]]; then \
+		@echo "error: 'BITS_DIR' must be set for 'publish' target"; \
+		exit 1; \
+	fi
+	mkdir -p $(BITS_DIR)/registrar
+	cp $(ROOT)/$(RELEASE_TARBALL) $(BITS_DIR)/registrar/$(RELEASE_TARBALL)
+
 
 include ./tools/mk/Makefile.deps
 include ./tools/mk/Makefile.node.targ
