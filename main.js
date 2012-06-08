@@ -35,7 +35,7 @@ var LOG = bunyan.createLogger({
                 err: bunyan.stdSerializers.err
         },
         src: ARGV.d ? true : false,
-        stream: process.stderr
+        stream: process.stdout
 });
 
 var ZK;
@@ -107,20 +107,23 @@ function registerSelf(opts, callback) {
                         path: opts.path
                 }, 'registerSelf: zk.mkdirp done');
 
-                var obj = {
-                        type: cfg.type // will be one of host || load_balancer
+                var options = {
+                        flags: ['ephemeral'],
+                        object: {
+                                type: cfg.type
+                        }
                 };
-                obj[obj.type] = {
+                options.object[cfg.type] = {
                         address: address()
                 };
-                zk.put(path, obj, {flags: ['ephemeral']}, function (err2) {
+                zk.creat(path, options, function (err2) {
                         if (err2) {
                                 log.error({
                                         domain: domain,
                                         hostname: hostname,
                                         path: path,
                                         err: err
-                                }, 'registerSelf: zk.put failed');
+                                }, 'registerSelf: zk.creat failed');
                                 return (callback(err2));
                         }
 
@@ -128,8 +131,8 @@ function registerSelf(opts, callback) {
                                 domain: domain,
                                 hostname: hostname,
                                 path: path,
-                                data: obj
-                        }, 'registerSelf: zk.put done');
+                                data: options
+                        }, 'registerSelf: zk.creat done');
                         return (callback(null));
                 });
                 return (undefined);
