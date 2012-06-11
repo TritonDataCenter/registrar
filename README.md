@@ -1,35 +1,24 @@
-# Joyent Engineering Guide
+# registrar
 
-Repository: <git@git.joyent.com:eng.git>
-Browsing: <https://mo.joyent.com/eng>
-Who: Trent Mick, Dave Pacheco
-Docs: <https://mo.joyent.com/docs/eng>
-Tickets/bugs: <https://devhub.joyent.com/jira/browse/TOOLS>
+Repository: <git@git.joyent.com:registrar.git>
+Browsing: <https://mo.joyent.com/registrar>
+Who: Mark Cavage
+Docs: <https://mo.joyent.com/docs/registrar>
+Tickets/bugs: <https://devhub.joyent.com/jira/browse/MANTA>
 
 
 # Overview
 
-This repo serves two purposes: (1) It defines the guidelines and best
-practices for Joyent engineering work (this is the primary goal), and (2) it
-also provides boilerplate for an SDC project repo, giving you a starting
-point for many of the suggestion practices defined in the guidelines. This is
-especially true for node.js-based REST API projects.
+This repo contains `registar` the agent that registers a host with `binder`.
 
-Start with the guidelines: <https://head.no.de/docs/eng>
-
+For more information see `docs/index.restdown`.
 
 # Repository
 
-    deps/           Git submodules and/or commited 3rd-party deps should go
-                    here. See "node_modules/" for node.js deps.
+    deps/           Git submodules (node et al).
     docs/           Project docs (restdown)
-    lib/            Source files.
-    node_modules/   Node.js deps, either populated at build time or commited.
-                    See Managing Dependencies.
-    pkg/            Package lifecycle scripts
+    node_modules/   Node.js deps, populated at build time.
     smf/manifests   SMF manifests
-    smf/methods     SMF method scripts
-    test/           Test suite (using node-tap)
     tools/          Miscellaneous dev/upgrade/deployment tools and data.
     Makefile
     package.json    npm module info (holds the project version)
@@ -38,13 +27,16 @@ Start with the guidelines: <https://head.no.de/docs/eng>
 
 # Development
 
-To run the boilerplate API server:
+To run the registrar agent:
 
-    git clone git@git.joyent.com:eng.git
-    cd eng
+    git clone git@git.joyent.com:registrar.git
+    cd registrar
     git submodule update --init
     make all
-    node server.js
+	. ./env.sh
+    node main.js -f ./etc/registrar.laptop.json 2>&1 | bunyan
+
+Where you are assumed to have edited the config file as appropriate.
 
 To update the guidelines, edit "docs/index.restdown" and run `make docs`
 to update "docs/index.html".
@@ -52,28 +44,7 @@ to update "docs/index.html".
 Before commiting/pushing run `make prepush` and, if possible, get a code
 review.
 
-
-
 # Testing
 
-    make test
-
-If you project has setup steps necessary for testing, then describe those
-here.
-
-
-# Starting a Repo Based on eng.git
-
-Create a new repo called "some-cool-fish" in your "~/work" dir based on "eng.git":
-Note: run this inside the eng dir.
-
-    ./tools/mkrepo $HOME/work/some-cool-fish
-
-
-# Your Other Sections Here
-
-Add other sections to your README as necessary. E.g. Running a demo, adding
-development data.
-
-
-
+This is an extremely small daemon.  There are no tests. You should just check
+that ZK has your entry after the agent starts.
