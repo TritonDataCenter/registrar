@@ -4,6 +4,9 @@
 <service_bundle type="manifest" name="registrar">
     <service name="sds/application/registrar" type="service" version="1">
 
+	<create_default_instance enabled="false" />
+	<single_instance />
+
 	<dependency name="network"
 		    grouping="require_all"
 		    restart_on="error"
@@ -21,7 +24,7 @@
 
 	<exec_method type="method"
 		     name="start"
-		     exec="node main.js &amp;"
+		     exec="node main.js -f ./etc/config.json &amp;"
 		     timeout_seconds="10">
 	    <method_context working_directory="/opt/smartdc/registrar">
                 <method_credential user="nobody"
@@ -37,11 +40,6 @@
 	</exec_method>
 
 	<exec_method type="method"
-		     name="refresh"
-		     exec=":kill"
-		     timeout_seconds="10" />
-
-	<exec_method type="method"
 		     name="stop"
 		     exec=":kill"
 		     timeout_seconds="10" />
@@ -49,7 +47,9 @@
 
 	<stability value='Unstable' />
 	<template>
-	    <common_name><loctext xml:lang="C">Joyent DNS registration agent</loctext></common_name>
+	    <common_name>
+		<loctext xml:lang="C">Joyent DNS registration agent</loctext>
+	    </common_name>
 	</template>
 
     </service>
