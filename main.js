@@ -116,6 +116,9 @@ function registerSelf(opts, callback) {
                 options.object[cfg.type] = {
                         address: address()
                 };
+                if (typeof (cfg.ttl) === 'number')
+                        options.object.ttl = cfg.ttl;
+
                 zk.creat(path, options, function (err2) {
                         if (err2) {
                                 log.error({
