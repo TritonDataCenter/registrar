@@ -45,7 +45,7 @@ include ./tools/mk/Makefile.smf.defs
 # MG Variables
 #
 
-RELEASE_TARBALL         := registar-pkg-$(STAMP).tar.bz2
+RELEASE_TARBALL         := registrar-pkg-$(STAMP).tar.bz2
 ROOT                    := $(shell pwd)
 TMPDIR                  := /tmp/$(STAMP)
 
