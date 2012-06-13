@@ -15,6 +15,11 @@
 #
 
 #
+# Env vars
+#
+PATH	:= $(NODE_INSTALL)/bin:${PATH}
+
+#
 # Files
 #
 DOC_FILES	 = index.restdown
@@ -25,28 +30,24 @@ JSSTYLE_FILES	 = $(JS_FILES)
 JSSTYLE_FLAGS    = -f tools/jsstyle.conf
 SMF_MANIFESTS_IN = smf/manifests/registrar.xml.in
 
-include ./tools/mk/Makefile.defs
-include ./tools/mk/Makefile.node.defs
-include ./tools/mk/Makefile.node_deps.defs
-include ./tools/mk/Makefile.smf.defs
-
 #
 # Variables
 #
 
-# Mountain Gorilla-spec'd versioning.
+NODE_PREBUILT_VERSION	:= v0.6.19
 
+include ./tools/mk/Makefile.defs
+include ./tools/mk/Makefile.node_prebuilt.defs
+include ./tools/mk/Makefile.node_deps.defs
+include ./tools/mk/Makefile.smf.defs
+
+#
+# MG Variables
+#
+
+RELEASE_TARBALL         := registar-pkg-$(STAMP).tar.bz2
 ROOT                    := $(shell pwd)
-RELEASE_TARBALL         := registrar-pkg-$(STAMP).tar.bz2
 TMPDIR                  := /tmp/$(STAMP)
-
-
-#
-# Env vars
-#
-PATH	:= $(NODE_INSTALL)/bin:${PATH}
-
-
 
 #
 # Repo-specific targets
@@ -88,7 +89,7 @@ publish: release
 
 
 include ./tools/mk/Makefile.deps
-include ./tools/mk/Makefile.node.targ
+include ./tools/mk/Makefile.node_prebuilt.targ
 include ./tools/mk/Makefile.node_deps.targ
 include ./tools/mk/Makefile.smf.targ
 include ./tools/mk/Makefile.targ
