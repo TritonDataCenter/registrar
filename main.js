@@ -119,14 +119,14 @@ function registerSelf(opts, callback) {
                 if (typeof (cfg.ttl) === 'number')
                         options.object.ttl = cfg.ttl;
 
-                zk.creat(path, options, function (err2) {
+                zk.put(path, options, function (err2) {
                         if (err2) {
                                 log.error({
                                         domain: domain,
                                         hostname: hostname,
                                         path: path,
                                         err: err
-                                }, 'registerSelf: zk.creat failed');
+                                }, 'registerSelf: zk.put failed');
                                 return (callback(err2));
                         }
 
@@ -135,7 +135,7 @@ function registerSelf(opts, callback) {
                                 hostname: hostname,
                                 path: path,
                                 data: options
-                        }, 'registerSelf: zk.creat done');
+                        }, 'registerSelf: zk.put done');
                         return (callback(null));
                 });
                 return (undefined);
