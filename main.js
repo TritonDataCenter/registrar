@@ -119,8 +119,8 @@ function registerSelf(opts, callback) {
                 if (typeof (cfg.ttl) === 'number')
                         options.object.ttl = cfg.ttl;
 
-                zk.put(path, options, function (err2) {
-                        if (err2) {
+                zk.creat(path, options, function (err2) {
+                        if (err2 && err2.code !== zk.ZNODEEXISTS) {
                                 log.error({
                                         domain: domain,
                                         hostname: hostname,
@@ -130,12 +130,12 @@ function registerSelf(opts, callback) {
                                 return (callback(err2));
                         }
 
-                        log.debug({
+                        log.info({
                                 domain: domain,
                                 hostname: hostname,
                                 path: path,
                                 data: options
-                        }, 'registerSelf: zk.put done');
+                        }, 'registerSelf: done');
                         return (callback(null));
                 });
                 return (undefined);
@@ -197,7 +197,8 @@ ZK = zkplus.createClient(zkOpts);
 ZK.on('connect', function onConnect() {
         LOG.info({
                 registration: CFG.registration,
-                zk: CFG.zookeeper
+                zk: CFG.zookeeper,
+                path: domainToPath(CFG.registration.domain)
         }, 'ZooKeeper connection successful; registering.');
 
         // register $self in ZK depending on the type. We always
