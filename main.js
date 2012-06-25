@@ -120,7 +120,7 @@ function registerSelf(opts, callback) {
                         options.object.ttl = cfg.ttl;
 
                 zk.creat(path, options, function (err2) {
-                        if (err2 && err2.code !== zk.ZNODEEXISTS) {
+                        if (err2 && err2.code !== zkplus.ZNODEEXISTS) {
                                 log.error({
                                         domain: domain,
                                         hostname: hostname,
