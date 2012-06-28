@@ -211,7 +211,18 @@ ZK.on('connect', function onConnect() {
                         path: domainToPath(CFG.registration.domain),
                         zk: ZK
                 },
-                funcs: [registerSelf, registerService]
+                funcs: [
+                        function _sleep(_, cb) {
+                                // This lets a previous ZK session expire, such
+                                // that any ephemeral nodes with the same name
+                                // will go away.  Highly important!
+                                LOG.info('Letting ZK sessions expire...');
+                                setTimeout(function () {
+                                        cb();
+                                }, 20000)
+                        },
+                        registerSelf,
+                        registerService]
         }, function (err) {
                 if (err) {
                         LOG.fatal(err, 'Unable to register in ZooKeeper');
