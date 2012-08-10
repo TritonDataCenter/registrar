@@ -186,15 +186,7 @@ function registerService(opts, callback) {
 }
 
 
-
-///--- Mainline
-
-readConfig();
-var zkOpts = clone(CFG.zookeeper);
-zkOpts.log = LOG;
-
-ZK = zkplus.createClient(zkOpts);
-ZK.on('connect', function onConnect() {
+function run() {
         LOG.info({
                 registration: CFG.registration,
                 zk: CFG.zookeeper,
@@ -229,14 +221,33 @@ ZK.on('connect', function onConnect() {
                         process.exit(1);
                 }
         });
-});
+}
+
+
+///--- Mainline
+
+readConfig();
+var zkOpts = clone(CFG.zookeeper);
+zkOpts.log = LOG;
+
+ZK = zkplus.createClient(zkOpts);
+ZK.on('connect', run);
 
 ZK.on('close', function () {
-        LOG.fatal('ZooKeeper session closed; exiting');
-        process.exit(1);
+        LOG.fatal('ZooKeeper session closed; restarting');
+        ZK = zkplus.createClient(zkOpts);
+        ZK.once('connect', run);
 });
 
 ZK.on('error', function (err) {
-        LOG.fatal(err, 'ZooKeeper error event; exiting');
-        process.exit(1);
+        LOG.fatal(err, 'ZooKeeper error event; restarting');
+        ZK = zkplus.createClient(zkOpts);
+        ZK.once('connect', run);
 });
+
+
+setInterval(function () {
+        var state = ZK.getState();
+        if (state !== 'connected')
+                LOG.warn({state: state}, 'ZooKeeper: disassociated');
+}, 10000);
