@@ -78,6 +78,7 @@ release: all docs $(SMF_MANIFESTS)
 	@mkdir -p $(TMPDIR)/root
 	@mkdir -p $(TMPDIR)/root/opt/smartdc/registrar/etc
 	cp -r   $(ROOT)/build \
+		$(ROOT)/deps \
 		$(ROOT)/main.js \
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
