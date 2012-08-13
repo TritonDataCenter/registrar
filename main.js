@@ -270,4 +270,4 @@ setInterval(function checkState() {
                 break;
         }
 
-}, 10000);
+}, CFG.checkInterval || 10000);
