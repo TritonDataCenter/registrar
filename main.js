@@ -211,7 +211,7 @@ function run() {
                                 LOG.info('Letting ZK sessions expire...');
                                 setTimeout(function () {
                                         cb();
-                                }, 20000)
+                                }, CFG.initialWaitTime || 5000)
                         },
                         registerSelf,
                         registerService]
