@@ -248,21 +248,24 @@ ZK.on('error', function (err) {
 
 setInterval(function checkState() {
         var state = ZK.getState();
-        LOG.trace({
-                state: state,
-                zk_state: ZK.zk.state
-        }, 'ZooKeeper: checkState');
 
         switch (state) {
         case 'connecting':
         case 'associating':
         case 'connected':
-                // NOOP
+                LOG.trace({
+                        state: state,
+                        zk_state: ZK.zk.state
+                }, 'ZooKeeper: checkState');
                 break;
         default:
                 // MANTA-127: we'll do this for now, and see if this is good
                 // enough - it's actually unclear what the best approach is
                 // here for handling ZK silently failing under the hood.
+                LOG.fatal({
+                        state: state,
+                        zk_state: ZK.zk.state
+                }, 'ZooKeeper: not connected');
                 process.exit(1);
                 break;
         }
