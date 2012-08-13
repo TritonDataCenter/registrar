@@ -231,43 +231,14 @@ var zkOpts = clone(CFG.zookeeper);
 zkOpts.log = LOG;
 
 ZK = zkplus.createClient(zkOpts);
-ZK.on('connect', run);
+ZK.once('connect', run);
 
 ZK.on('close', function () {
-        LOG.fatal('ZooKeeper session closed; restarting');
-        ZK = zkplus.createClient(zkOpts);
-        ZK.once('connect', run);
+        LOG.fatal('ZooKeeper session closed; exiting');
+        process.exit(1);
 });
 
 ZK.on('error', function (err) {
-        LOG.fatal(err, 'ZooKeeper error event; restarting');
-        ZK = zkplus.createClient(zkOpts);
-        ZK.once('connect', run);
+        LOG.fatal(err, 'ZooKeeper error event; exiting');
+        process.exit(1);
 });
-
-
-setInterval(function checkState() {
-        var state = ZK.getState();
-
-        switch (state) {
-        case 'connecting':
-        case 'associating':
-        case 'connected':
-                LOG.trace({
-                        state: state,
-                        zk_state: ZK.zk.state
-                }, 'ZooKeeper: checkState');
-                break;
-        default:
-                // MANTA-127: we'll do this for now, and see if this is good
-                // enough - it's actually unclear what the best approach is
-                // here for handling ZK silently failing under the hood.
-                LOG.fatal({
-                        state: state,
-                        zk_state: ZK.zk.state
-                }, 'ZooKeeper: not connected');
-                process.exit(1);
-                break;
-        }
-
-}, CFG.checkInterval || 10000);
