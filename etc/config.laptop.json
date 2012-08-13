@@ -1,6 +1,6 @@
 {
         "registration": {
-                "domain": "1.moray.sds.us-east-1.joyent.com",
+                "domain": "unit.test.joyent.us",
                 "type": "host",
                 "host": {
                         "address": "10.88.88.130"
@@ -8,9 +8,10 @@
         },
         "zookeeper": {
                 "servers": [ {
-                        "host": "10.99.99.238",
+                        "host": "10.2.201.172",
                         "port": 2181
                 } ],
-                "timeout": 1000
-        }
+                "timeout": 6000
+        },
+        "initialWaitTime": 19000
 }
