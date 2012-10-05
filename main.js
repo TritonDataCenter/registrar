@@ -6,7 +6,7 @@ var os = require('os');
 
 var bunyan = require('bunyan');
 var clone = require('clone');
-var optimist = require('optimist');
+var getopt = require('posix-getopt');
 var vasync = require('vasync');
 var zkplus = require('zkplus');
 
@@ -14,42 +14,21 @@ var zkplus = require('zkplus');
 
 ///--- Globals
 
-var ARGV = optimist.options({
-        'd': {
-                alias: 'debug',
-                describe: 'debug level'
-        },
-        'f': {
-                alias: 'file',
-                demand: true,
-                describe: 'configuration file'
-        }
-}).argv;
-
+var ARGV;
 var CFG;
-
 var LOG = bunyan.createLogger({
-        level: ARGV.d ? (ARGV.d > 1 ? 'trace' : 'debug') : 'info',
+        level: (process.env.LOG_LEVEL || 'info'),
         name: 'registrar',
         serializers: {
                 err: bunyan.stdSerializers.err
         },
-        src: ARGV.d ? true : false,
         stream: process.stdout
 });
-
 var ZK;
 
 
 
 ///--- Helpers
-
-// domainToPath(1.moray.sds.joyent.com) => /com/joyent/sds/moray/1
-function domainToPath(domain) {
-        assert.ok(domain);
-        return ('/' + domain.split('.').reverse().join('/'));
-}
-
 
 function address() {
         var ifaces = os.networkInterfaces();
@@ -63,10 +42,48 @@ function address() {
 }
 
 
-function readConfig() {
+// domainToPath(1.moray.sds.joyent.com) => /com/joyent/sds/moray/1
+function domainToPath(domain) {
+        assert.ok(domain);
+        return ('/' + domain.split('.').reverse().join('/'));
+}
+
+
+function parseOptions() {
+        var option;
+        var opts = {};
+        var parser = new getopt.BasicParser('vf:(file)', process.argv);
+
+        while ((option = parser.getopt()) !== undefined) {
+                switch (option.option) {
+                case 'f':
+                        opts.file = option.optarg;
+                        break;
+
+                case 'v':
+                        // Allows us to set -vvv -> this little hackery
+                        // just ensures that we're never < TRACE
+                        LOG.level(Math.max(bunyan.TRACE, (LOG.level() - 10)));
+                        if (LOG.level() <= bunyan.DEBUG)
+                                LOG = LOG.child({src: true});
+                        break;
+
+                default:
+                        console.error('invalid option: ' + option.option);
+                        process.exit(1);
+                        break;
+                }
+        }
+
+        ARGV = opts;
+        return (opts);
+}
+
+
+function readConfig(opts) {
         if (!CFG) {
-                CFG = JSON.parse(fs.readFileSync(ARGV.f, 'utf8'));
-                LOG.info({config: CFG, file: ARGV.f}, 'Configuration loaded');
+                CFG = JSON.parse(fs.readFileSync(opts.file, 'utf8'));
+                LOG.info({config: CFG, file: opts.file}, 'Configuration loaded');
         }
 
         return (CFG);
@@ -226,11 +243,10 @@ function run() {
 
 ///--- Mainline
 
-readConfig();
-var zkOpts = clone(CFG.zookeeper);
-zkOpts.log = LOG;
+readConfig(parseOptions());
+CFG.zookeeper.log = LOG;
 
-ZK = zkplus.createClient(zkOpts);
+ZK = zkplus.createClient(CFG.zookeeper);
 ZK.once('connect', run);
 
 ZK.on('close', function () {

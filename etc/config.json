@@ -8,7 +8,7 @@
         },
         "zookeeper": {
                 "servers": [ {
-                        "host": "10.2.201.172",
+                        "host": "10.2.201.108",
                         "port": 2181
                 } ],
                 "timeout": 6000

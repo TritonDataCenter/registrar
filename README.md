@@ -13,28 +13,13 @@ This repo contains `registar` the agent that registers a host with `binder`.
 
 For more information see `docs/index.restdown`.
 
-# Repository
-
-    deps/           Git submodules (node et al).
-    docs/           Project docs (restdown)
-    node_modules/   Node.js deps, populated at build time.
-    smf/manifests   SMF manifests
-    tools/          Miscellaneous dev/upgrade/deployment tools and data.
-    Makefile
-    package.json    npm module info (holds the project version)
-    README.md
-
-
 # Development
 
 To run the registrar agent:
 
-    git clone git@git.joyent.com:registrar.git
-    cd registrar
-    git submodule update --init
-    make all
+    make
 	. ./env.sh
-    node main.js -f ./etc/registrar.laptop.json 2>&1 | bunyan
+	run
 
 Where you are assumed to have edited the config file as appropriate.
 
