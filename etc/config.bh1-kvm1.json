@@ -1,0 +1,17 @@
+{
+        "registration": {
+                "domain": "unittest.bh1-kvm1.joyent.us",
+                "type": "host",
+                "host": {
+                        "address": "10.88.88.130"
+                }
+        },
+        "zookeeper": {
+                "servers": [ {
+                        "host": "10.2.201.197",
+                        "port": 2181
+                } ],
+                "timeout": 6000
+        },
+        "initialWaitTime": 4000
+}

@@ -90,6 +90,38 @@ function readConfig(opts) {
 }
 
 
+function removeOldEntry(opts, callback) {
+        assert.ok(opts);
+        assert.ok(callback);
+
+        var log = opts.log;
+        var hostname = os.hostname();
+        var path = opts.path + '/' + hostname;
+        var zk = opts.zk;
+
+        log.debug({
+                domain: opts.cfg.domain,
+                path: path
+        }, 'removeOldEntry: entered');
+
+        zk.unlink(path, function (err) {
+                if (err && err.code !== zkplus.ZNONODE) {
+                        log.error({
+                                domain: opts.cfg.domain,
+                                err: err,
+                                path: path
+                        }, 'removeOldEntry: zk.unlink failed');
+                        callback(err);
+                } else {
+                        log.debug({
+                                domain: opts.cfg.domain,
+                                path: path
+                        }, 'removeOldEntry: done');
+                        callback();
+                }
+        });
+}
+
 function registerSelf(opts, callback) {
         assert.ok(opts);
         assert.ok(callback);
@@ -221,14 +253,11 @@ function run() {
                         zk: ZK
                 },
                 funcs: [
-                        function _sleep(_, cb) {
-                                // This lets a previous ZK session expire, such
-                                // that any ephemeral nodes with the same name
-                                // will go away.  Highly important!
-                                LOG.info('Letting ZK sessions expire...');
-                                setTimeout(function () {
-                                        cb();
-                                }, CFG.initialWaitTime || 5000)
+                        removeOldEntry,
+                        function sleepForTickTime(_, cb) {
+                                LOG.info('waiting for %ds',
+                                         (CFG.initialWaitTime / 1000));
+                                setTimeout(cb.bind(null), CFG.initialWaitTime);
                         },
                         registerSelf,
                         registerService]
