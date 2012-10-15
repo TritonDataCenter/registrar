@@ -12,6 +12,5 @@
                         "port": 2181
                 } ],
                 "timeout": 6000
-        },
-        "initialWaitTime": 4000
+        }
 }

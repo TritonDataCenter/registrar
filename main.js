@@ -255,9 +255,9 @@ function run() {
                 funcs: [
                         removeOldEntry,
                         function sleepForTickTime(_, cb) {
-                                LOG.info('waiting for %ds',
-                                         (CFG.initialWaitTime / 1000));
-                                setTimeout(cb.bind(null), CFG.initialWaitTime);
+                                var t = CFG.initialWaitTime || 1000;
+                                LOG.info('waiting for %ds', (t / 1000));
+                                setTimeout(cb.bind(null), t);
                         },
                         registerSelf,
                         registerService]
