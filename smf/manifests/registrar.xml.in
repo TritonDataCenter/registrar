@@ -25,7 +25,7 @@
 	<exec_method type="method"
 		     name="start"
 		     exec="node main.js -f ./etc/config.json &amp;"
-		     timeout_seconds="10">
+		     timeout_seconds="30">
 	    <method_context working_directory="/opt/smartdc/registrar">
                 <method_credential user="nobody"
                                    group="nobody"
@@ -42,7 +42,7 @@
 	<exec_method type="method"
 		     name="stop"
 		     exec=":kill"
-		     timeout_seconds="10" />
+		     timeout_seconds="30" />
 
 
 	<stability value='Unstable' />
