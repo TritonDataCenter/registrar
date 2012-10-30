@@ -5,15 +5,14 @@
         "author": "Joyent (joyent.com)",
         "private": true,
         "dependencies": {
+                "assert-plus": "0.1.2",
+                "backoff": "1.2.0",
                 "bunyan": "0.14.6",
                 "clone": "0.1.1",
                 "node-uuid": "1.4.0",
                 "posix-getopt": "1.0.0",
                 "vasync": "1.3.2",
-                "zkplus": "git://github.com/mcavage/node-zkplus.git#733906c"
-        },
-        "devDependencies": {
-                "nodeunit": "0.7.4"
+                "zkplus": "git://github.com/mcavage/node-zkplus.git#2f0667"
         },
         "scripts": {
                 "start": "node ./main.js -f ./etc/config.json"
