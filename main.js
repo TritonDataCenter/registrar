@@ -167,7 +167,6 @@ function createZkClient(opts, cb) {
         });
 
         return (retry);
-
 }
 
 
@@ -420,19 +419,22 @@ function onZooKeeperClient(zk_err, zk) {
                 process.exit(1);
         }
 
-        zk.on('close', function () {
-                LOG.info('ZooKeeper session closed; restarting');
+        function cleanup(event, err) {
+                LOG.error({
+                        event: event,
+                        err: err
+                }, 'ZooKeeper session closure; restarting');
                 clearInterval(t);
-                createZkClient(CFG.zookeeper, onZooKeeperClient);
-                zk.removeAllListeners('error');
-        });
-
-        zk.on('error', function (err) {
-                LOG.error(err, 'ZooKeeper error event; exiting');
                 zk.removeAllListeners('close');
+                zk.removeAllListeners('error');
+                zk.removeAllListeners('session_expired');
                 zk.close();
                 createZkClient(CFG.zookeeper, onZooKeeperClient);
-        });
+        }
+
+        zk.on('close', cleanup.bind(this, 'close'));
+        zk.on('error', cleanup.bind(this, 'error'));
+        zk.on('session_expired', cleanup.bind(this, 'session_expired'));
 
         var t = setInterval(function checkState() {
                 heartbeat(zk, function (err) {
