@@ -101,6 +101,9 @@ function usage(msg) {
 ///--- worker functions
 
 function address() {
+        if (CFG.adminIp)
+                return (CFG.adminIp);
+
         var ifaces = os.networkInterfaces();
         var addrs = Object.keys(ifaces).filter(function (k) {
                 return (!ifaces[k][0].internal);
