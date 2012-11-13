@@ -145,6 +145,8 @@ function createZkClient(opts, cb) {
 
                 client.once('connect', onConnect);
                 client.once('error', onError);
+
+                client.connect();
         }
 
         var retry = backoff.call(_createClient, null, cb);
@@ -416,37 +418,24 @@ var ARGV = parseOptions();
 var CFG = readConfig(ARGV);
 CFG.zookeeper.log = LOG;
 
-function onZooKeeperClient(zk_err, zk) {
-        if (zk_err) {
-                LOG.fatal(zk_err, 'unable to create ZooKeeper client');
+createZkClient(CFG.zookeeper, function onZooKeeperClient(init_err, zk) {
+        if (init_err) {
+                LOG.fatal(init_err, 'unable to create ZooKeeper client');
                 process.exit(1);
         }
 
-        function cleanup(event, err) {
-                LOG.error({
-                        event: event,
-                        err: err
-                }, 'ZooKeeper session closure; restarting');
-                clearInterval(t);
-                zk.removeAllListeners('close');
-                zk.removeAllListeners('error');
-                zk.removeAllListeners('session_expired');
-                zk.close();
-                createZkClient(CFG.zookeeper, onZooKeeperClient);
-        }
+        zk.on('error', function (err) {
+                LOG.fatal(err, 'Unexpected ZK error');
+                process.exit(1);
+        });
 
-        zk.on('close', cleanup.bind(this, 'close'));
-        zk.on('error', cleanup.bind(this, 'error'));
-        zk.on('session_expired', cleanup.bind(this, 'session_expired'));
+        zk.on('connection_interrupted', function () {
+                LOG.warni('ZooKeeper: connection loss');
+        });
 
-        var t = setInterval(function checkState() {
-                heartbeat(zk, function (err) {
-                        if (err) {
-                                clearInterval(t);
-                                zk.close();
-                        }
-                });
-        }, ((CFG.zookeeper.timeout || 6000) / 2));
+        zk.on('connect', function () {
+                LOG.info('ZooKeeper: reconnected');
+        });
 
         register({
                 domain: CFG.registration.domain,
@@ -454,6 +443,4 @@ function onZooKeeperClient(zk_err, zk) {
                 registration: CFG.registration,
                 zk: zk
         });
-}
-
-createZkClient(CFG.zookeeper, onZooKeeperClient);
+});
