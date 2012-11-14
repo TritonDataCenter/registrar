@@ -182,29 +182,6 @@ function domainToPath(domain) {
 }
 
 
-function heartbeat(zk, cb) {
-        assert.object(zk, 'zkClient');
-        assert.func(cb, 'callback');
-
-        var path = domainToPath(CFG.registration.domain);
-
-        LOG.debug({path: path}, 'heartbeat: entered');
-
-        zk.stat(path, function (err, stat) {
-                if (err) {
-                        LOG.warn({
-                                err: err,
-                                path: path
-                        }, 'heartbeat: failed');
-                        cb(err);
-                } else {
-                        LOG.debug({path: path}, 'heartbeat: ok');
-                        cb();
-                }
-        });
-}
-
-
 function registerSelf(opts, cb) {
         assert.object(opts, 'options');
         assert.object(opts.cfg, 'options.cfg');
@@ -393,7 +370,7 @@ function register(opts) {
                 },
                 funcs: [
                         removeOldEntry,
-                        function sleepForTickTime(_, cb) {
+                        function wait(_, cb) {
                                 LOG.info('waiting for 1s');
                                 setTimeout(cb.bind(null), 1000);
                         },
@@ -423,17 +400,8 @@ createZkClient(CFG.zookeeper, function onZooKeeperClient(init_err, zk) {
                 process.exit(1);
         }
 
-        zk.on('error', function (err) {
-                LOG.fatal(err, 'Unexpected ZK error');
-                process.exit(1);
-        });
-
-        zk.on('connection_interrupted', function () {
-                LOG.warni('ZooKeeper: connection loss');
-        });
-
         zk.on('connect', function () {
-                LOG.info('ZooKeeper: reconnected');
+                LOG.info('ZooKeeper: connection reestablished');
         });
 
         register({

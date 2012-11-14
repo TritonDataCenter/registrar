@@ -1,0 +1,13 @@
+{
+        "registration": {
+                "domain": "test.coal.joyent.us",
+                "type": "host"
+        },
+        "zookeeper": {
+                "servers": [ {
+                        "host": "10.2.209.125",
+                        "port": 2181
+                } ],
+                "timeout": 60000
+        }
+}
