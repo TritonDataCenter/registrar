@@ -117,7 +117,6 @@ function address() {
 
 function createZkClient(opts, cb) {
         assert.object(opts, 'options');
-        assert.optionalNumber(opts.connectTimeout, 'options.connectTimeout');
         assert.arrayOfObject(opts.servers, 'options.servers');
         assert.number(opts.timeout, 'options.timeout');
         assert.func(cb, 'callback');
