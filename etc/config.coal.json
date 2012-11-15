@@ -10,5 +10,6 @@
                         "port": 2181
                 } ],
                 "timeout": 6000
-        }
+        },
+        "maxAttempts": 10
 }

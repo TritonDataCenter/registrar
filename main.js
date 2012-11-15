@@ -24,6 +24,7 @@ var LOG = bunyan.createLogger({
         },
         stream: process.stdout
 });
+var NODES = [];
 
 
 
@@ -182,6 +183,28 @@ function domainToPath(domain) {
 }
 
 
+function heartbeat(opts, cb) {
+        assert.object(opts, 'options');
+        assert.arrayOfString(opts.nodes, 'options.nodes');
+        assert.object(opts.zk, 'options.zk');
+        assert.func(cb, 'callback');
+
+        function check(_, _cb) {
+                vasync.forEachParallel({
+                        func: opts.zk.stat.bind(opts.zk),
+                        inputs: opts.nodes
+                }, _cb);
+        }
+
+        var retry = backoff.call(check, null, cb);
+        retry.failAfter(CFG.maxAttempts || 5);
+        retry.setStrategy(new backoff.ExponentialStrategy({
+                initialDelay: 1000,
+                maxDelay: 30000
+        }));
+}
+
+
 function registerSelf(opts, cb) {
         assert.object(opts, 'options');
         assert.object(opts.cfg, 'options.cfg');
@@ -252,6 +275,7 @@ function registerSelf(opts, cb) {
                                 path: path,
                                 data: options
                         }, 'registerSelf: done');
+                        NODES.push(path);
                         cb();
                 });
         });
@@ -301,6 +325,10 @@ function registerService(opts, cb) {
                                 domain: domain,
                                 path: path
                         }, 'registerService: zk.update done');
+
+                        if (NODES.indexOf(path) === -1)
+                                NODES.push(path);
+
                         cb();
                 }
         });
@@ -343,11 +371,12 @@ function removeOldEntry(opts, cb) {
 }
 
 
-function register(opts) {
+function register(opts, cb) {
         assert.object(opts, 'options');
         assert.string(opts.domain, 'options.domain');
         assert.object(opts.registration, 'options.registration');
         assert.object(opts.zk, 'options.zk');
+        assert.func(cb, 'callback');
 
         var path = domainToPath(opts.domain);
 
@@ -380,8 +409,11 @@ function register(opts) {
         }, function (err) {
                 if (err) {
                         LOG.error(err, 'unable to register in ZooKeeper');
+                        NODES.length = 0;
+                        cb(err);
                 } else {
                         LOG.info('registered in ZooKeeper');
+                        cb();
                 }
         });
 }
@@ -404,10 +436,41 @@ createZkClient(CFG.zookeeper, function onZooKeeperClient(init_err, zk) {
                 LOG.info('ZooKeeper: connection reestablished');
         });
 
-        register({
+        var opts =  {
                 domain: CFG.registration.domain,
                 log: LOG,
                 registration: CFG.registration,
                 zk: zk
+        };
+
+        var retry = backoff.call(register, opts, function (err, res) {
+                if (err) {
+                        LOG.fatal(err, 'registration failed');
+                        process.exit(1);
+                }
+
+                setInterval(function () {
+                        var _opts = {
+                                log: LOG,
+                                nodes: NODES,
+                                zk: zk
+                        };
+                        heartbeat(_opts, function (check_err) {
+                                if (check_err) {
+                                        LOG.fatal({
+                                                err: check_err,
+                                                nodes: NODES
+                                        }, 'unable to see nodes in ZK');
+                                        process.exit(1);
+                                }
+
+                                LOG.debug('heartbeat of %j ok', NODES);
+                        });
+                }, (CFG.heartbeatInterval || 30000));
         });
+        retry.failAfter(CFG.maxAttempts || 30);
+        retry.setStrategy(new backoff.ExponentialStrategy({
+                initialDelay: 1000,
+                maxDelay: 30000
+        }));
 });
