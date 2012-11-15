@@ -449,7 +449,8 @@ createZkClient(CFG.zookeeper, function onZooKeeperClient(init_err, zk) {
                         process.exit(1);
                 }
 
-                setInterval(function () {
+                var interval = CFG.heartbeatInterval || 30000;
+                function checkNodes() {
                         var _opts = {
                                 log: LOG,
                                 nodes: NODES,
@@ -465,8 +466,11 @@ createZkClient(CFG.zookeeper, function onZooKeeperClient(init_err, zk) {
                                 }
 
                                 LOG.debug('heartbeat of %j ok', NODES);
+                                setTimeout(checkNodes, interval);
                         });
-                }, (CFG.heartbeatInterval || 30000));
+                }
+
+                setTimeout(checkNodes, interval);
         });
         retry.failAfter(CFG.maxAttempts || 30);
         retry.setStrategy(new backoff.ExponentialStrategy({
