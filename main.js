@@ -399,9 +399,9 @@ function register(opts, cb) {
                 },
                 funcs: [
                         removeOldEntry,
-                        function wait(_, cb) {
+                        function wait(_, _cb) {
                                 LOG.info('waiting for 1s');
-                                setTimeout(cb.bind(null), 1000);
+                                setTimeout(_cb.bind(null), 1000);
                         },
                         registerSelf,
                         registerService
