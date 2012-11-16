@@ -35,7 +35,9 @@
                             value="/opt/smartdc/registrar/build/node/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin"/>
                     <envvar name="LD_PRELOAD_32"
                             value="/usr/lib/extendedFILE.so.1" />
-		    <envvar name="ZK_LOG_LEVEL" value="4" />
+		    <!--
+			<envvar name="ZK_LOG_LEVEL" value="4" />
+		    -->
 		</method_environment>
             </method_context>
 	</exec_method>
