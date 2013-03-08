@@ -1,7 +1,10 @@
 {
         "registration": {
                 "domain": "test.coal.joyent.us",
-                "type": "host"
+                "type": "host",
+                "aliases": [
+                        "alias-1.test.coal.joyent.us"
+                ]
         },
         "zookeeper": {
                 "connectTimeout": 1000,

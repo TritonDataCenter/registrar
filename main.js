@@ -205,79 +205,176 @@ function heartbeat(opts, cb) {
 }
 
 
-function registerSelf(opts, cb) {
+function removeOldEntryFunc(path) {
+        assert.string(path, 'path');
+
+        return (function (opts, cb) {
+                assert.object(opts, 'options');
+                assert.string(opts.domain, 'opts.domain');
+                assert.object(opts.log, 'options.log');
+                assert.object(opts.zk, 'options.zk');
+                assert.func(cb, 'callback');
+
+                var log = opts.log;
+                var zk = opts.zk;
+
+                log.debug({
+                        domain: opts.domain,
+                        path: path
+                }, 'removeOldEntry: entered');
+
+                zk.unlink(path, function (err) {
+                        if (err && err.code !== zkplus.ZNONODE) {
+                                log.error({
+                                        domain: opts.domain,
+                                        err: err,
+                                        path: path
+                                }, 'removeOldEntry: zk.unlink failed');
+                                cb(err);
+                        } else {
+                                log.debug({
+                                        domain: opts.domain,
+                                        path: path
+                                }, 'removeOldEntry: done');
+                                cb();
+                        }
+                });
+        });
+}
+
+
+function removeOldEntries(opts, cb) {
+        assert.object(opts, 'options');
+        assert.string(opts.domain, 'opts.domain');
+        assert.object(opts.log, 'options.log');
+        assert.arrayOfString(opts.aliases, 'options.aliases');
+        assert.object(opts.zk, 'options.zk');
+        assert.func(cb, 'callback');
+
+        var funcs = [];
+        for (var i = 0; i < opts.aliases.length; ++i) {
+                funcs.push(removeOldEntryFunc(opts.aliases[i]));
+        }
+
+        vasync.pipeline({
+                'funcs': funcs,
+                'arg': opts
+        }, function (err, results) {
+                if (err) {
+                        LOG.error(err, 'unable to remove old entries');
+                        cb(err);
+                } else {
+                        LOG.info('removed old entries');
+                        cb();
+                }
+
+        });
+}
+
+
+function registerEntryFunc(path) {
+        assert.string(path, 'path');
+
+        return (function (opts, cb) {
+                assert.object(opts, 'options');
+                assert.object(opts.cfg, 'options.cfg');
+                assert.string(opts.cfg.domain, 'options.cfg.domain');
+                assert.string(opts.domain, 'options.domain');
+                assert.object(opts.log, 'options.log');
+                assert.object(opts.zk, 'options.zk');
+                assert.func(cb, 'callback');
+
+                var cfg = opts.cfg;
+                var domain = opts.domain;
+                var log = opts.log;
+                var zk = opts.zk;
+
+                log.debug({
+                        domain: domain,
+                        path: path
+                }, 'registerEntry: entered');
+
+                zk.mkdirp(opts.path, function (err) {
+                        if (err) {
+                                log.error({
+                                        domain: domain,
+                                        path: opts.path,
+                                        err: err
+                                }, 'registerEntry: zk.mkdirp failed');
+                                cb(err);
+                                return;
+                        }
+
+                        log.debug({
+                                domain: domain,
+                                path: opts.path
+                        }, 'registerEntry: zk.mkdirp done');
+
+                        var options = {
+                                flags: ['ephemeral'],
+                                object: {
+                                        type: cfg.type
+                                }
+                        };
+                        options.object[cfg.type] = {
+                                address: address()
+                        };
+                        if (typeof (cfg.ttl) === 'number')
+                                options.object.ttl = cfg.ttl;
+
+                        zk.creat(path, options, function (err2) {
+                                if (err2 && err2.code !== zkplus.ZNODEEXISTS) {
+                                        log.error({
+                                                domain: domain,
+                                                hostname: HOSTNAME,
+                                                path: path,
+                                                err: err
+                                        }, 'registerEntry: zk.creat failed');
+                                        cb(err2);
+                                        return;
+                                }
+
+                                log.info({
+                                        domain: domain,
+                                        hostname: HOSTNAME,
+                                        path: path,
+                                        data: options
+                                }, 'registerEntry: done');
+                                NODES.push(path);
+                                cb();
+                        });
+                });
+        });
+}
+
+
+function registerEntries(opts, cb) {
         assert.object(opts, 'options');
         assert.object(opts.cfg, 'options.cfg');
         assert.string(opts.cfg.domain, 'options.cfg.domain');
         assert.string(opts.domain, 'options.domain');
         assert.object(opts.log, 'options.log');
-        assert.string(opts.path, 'options.path');
         assert.object(opts.zk, 'options.zk');
+        assert.arrayOfString(opts.aliases, 'options.aliases');
         assert.func(cb, 'callback');
 
-        var cfg = opts.cfg;
-        var domain = opts.domain;
-        var log = opts.log;
-        var path = opts.path + '/' + HOSTNAME;
-        var zk = opts.zk;
+        var funcs = [];
+        for (var i = 0; i < opts.aliases.length; ++i) {
+                funcs.push(registerEntryFunc(opts.aliases[i]));
+        }
 
-        log.debug({
-                domain: domain,
-                hostname: HOSTNAME,
-                path: path
-        }, 'registerSelf: entered');
-
-        zk.mkdirp(opts.path, function (err) {
+        vasync.pipeline({
+                'funcs': funcs,
+                'arg': opts
+        }, function (err, results) {
                 if (err) {
-                        log.error({
-                                domain: domain,
-                                hostname: HOSTNAME,
-                                path: opts.path,
-                                err: err
-                        }, 'registerSelf: zk.mkdirp failed');
+                        LOG.error(err, 'unable to register entries');
                         cb(err);
-                        return;
+                } else {
+                        LOG.info('added entries');
+                        cb();
                 }
 
-                log.debug({
-                        domain: domain,
-                        hostname: HOSTNAME,
-                        path: opts.path
-                }, 'registerSelf: zk.mkdirp done');
-
-                var options = {
-                        flags: ['ephemeral'],
-                        object: {
-                                type: cfg.type
-                        }
-                };
-                options.object[cfg.type] = {
-                        address: address()
-                };
-                if (typeof (cfg.ttl) === 'number')
-                        options.object.ttl = cfg.ttl;
-
-                zk.creat(path, options, function (err2) {
-                        if (err2 && err2.code !== zkplus.ZNODEEXISTS) {
-                                log.error({
-                                        domain: domain,
-                                        hostname: HOSTNAME,
-                                        path: path,
-                                        err: err
-                                }, 'registerSelf: zk.creat failed');
-                                cb(err2);
-                                return;
-                        }
-
-                        log.info({
-                                domain: domain,
-                                hostname: HOSTNAME,
-                                path: path,
-                                data: options
-                        }, 'registerSelf: done');
-                        NODES.push(path);
-                        cb();
-                });
         });
 }
 
@@ -335,42 +432,6 @@ function registerService(opts, cb) {
 }
 
 
-function removeOldEntry(opts, cb) {
-        assert.object(opts, 'options');
-        assert.string(opts.domain, 'opts.domain');
-        assert.object(opts.log, 'options.log');
-        assert.string(opts.path, 'options.lopath');
-        assert.object(opts.zk, 'options.zk');
-        assert.func(cb, 'callback');
-
-        var log = opts.log;
-        var path = opts.path + '/' + HOSTNAME;
-        var zk = opts.zk;
-
-        log.debug({
-                domain: opts.cfg.domain,
-                path: path
-        }, 'removeOldEntry: entered');
-
-        zk.unlink(path, function (err) {
-                if (err && err.code !== zkplus.ZNONODE) {
-                        log.error({
-                                domain: opts.domain,
-                                err: err,
-                                path: path
-                        }, 'removeOldEntry: zk.unlink failed');
-                        cb(err);
-                } else {
-                        log.debug({
-                                domain: opts.domain,
-                                path: path
-                        }, 'removeOldEntry: done');
-                        cb();
-                }
-        });
-}
-
-
 function register(opts, cb) {
         assert.object(opts, 'options');
         assert.string(opts.domain, 'options.domain');
@@ -380,30 +441,39 @@ function register(opts, cb) {
 
         var path = domainToPath(opts.domain);
 
+        // We always write a leadnode for ourselves.
+        var aliases = [ path + '/' + HOSTNAME ];
+
+        var oaliases = opts.registration.aliases || [];
+        for (var i = 0; i < oaliases.length; ++i) {
+                var p = domainToPath(oaliases[i]);
+                aliases.push(p);
+        }
+
         LOG.debug({
                 domain: opts.domain,
                 registration: opts.registration,
-                path: path
+                path: path,
+                aliases: aliases
         }, 'registering');
 
-        // register $self in ZK depending on the type. We always
-        // write a leadnode for ourselves, but we may need to additionally
-        // set a service record.
+        // Register $self in ZK depending on the type.
         vasync.pipeline({
                 arg: {
                         cfg: opts.registration,
                         domain: opts.domain,
                         log: LOG,
                         path: path,
+                        aliases: aliases,
                         zk: opts.zk
                 },
                 funcs: [
-                        removeOldEntry,
+                        removeOldEntries,
                         function wait(_, _cb) {
                                 LOG.info('waiting for 1s');
                                 setTimeout(_cb.bind(null), 1000);
                         },
-                        registerSelf,
+                        registerEntries,
                         registerService
                 ]
         }, function (err) {
