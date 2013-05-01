@@ -19,7 +19,7 @@ To run the registrar agent:
 
     make
 	. ./env.sh
-	run
+	runit
 
 Where you are assumed to have edited the config file as appropriate.
 

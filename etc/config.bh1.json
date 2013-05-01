@@ -1,0 +1,19 @@
+{
+    "registration": {
+        "domain": "test.bh1.joyent.us",
+        "type": "host",
+        "host": {
+            "address": "10.88.88.144"
+        }
+    },
+    "zookeeper": {
+        "servers": [ {
+            "host": "10.2.201.7",
+            "port": 2181
+        } ],
+        "timeout": 6000
+    },
+    "heartbeat": {
+        "maxAttempts": 5
+    }
+}

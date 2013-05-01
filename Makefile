@@ -29,7 +29,7 @@ SMF_MANIFESTS_IN = smf/manifests/registrar.xml.in
 # Variables
 #
 NODE_PREBUILT_TAG	= zone
-NODE_PREBUILT_VERSION	:= v0.8.14
+NODE_PREBUILT_VERSION	:= v0.8.23
 
 # RELENG-341: no npm cache is making builds unreliable
 NPM_FLAGS :=
