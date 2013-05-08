@@ -1,5 +1,7 @@
 // Copyright (c) 2013, Joyent, Inc. All rights reserved.
 
+var EventEmitter = require('events').EventEmitter;
+var exec = require('child_process').exec;
 var fs = require('fs');
 var os = require('os');
 
@@ -9,6 +11,7 @@ var bunyan = require('bunyan');
 var clone = require('clone');
 var dashdash = require('dashdash');
 var vasync = require('vasync');
+var verror = require('verror');
 var zkplus = require('zkplus');
 
 
@@ -86,7 +89,7 @@ function usage(msg) {
         console.error(msg);
 
     var str = 'usage: ' + require('path').basename(process.argv[1]);
-    str += '[-h] [-v] [-f file]';
+    str += ' [-h] [-v] [-f file]';
     console.error(str);
     process.exit(1);
 }
@@ -107,6 +110,18 @@ function address(cfg) {
     });
 
     return (addrs[0].address);
+}
+
+
+function aliases(opts) {
+    // We always write a leadnode for ourselves.
+    var arr = [ domainToPath(opts.domain) + '/' + HOSTNAME ];
+
+    (opts.aliases || []).forEach(function (a) {
+        arr.push(domainToPath(a));
+    });
+
+    return (arr);
 }
 
 
@@ -179,6 +194,7 @@ function domainToPath(domain) {
 }
 
 
+// This heartbeats to ZK
 function heartbeat(opts, cb) {
     assert.object(opts, 'options');
     assert.object(opts.config, 'options.config');
@@ -203,10 +219,98 @@ function heartbeat(opts, cb) {
 }
 
 
+// This healthchecks the "thing in the zone you care about"
+function healthCheck(opts) {
+    assert.object(opts, 'options');
+    assert.string(opts.command, 'options.command');
+    assert.optionalBool(opts.ignoreExitStatus, 'options.ignoreExitStatus');
+    assert.optionalNumber(opts.interval, 'options.interval');
+    assert.optionalObject(opts.stdoutMatch, 'options.stdoutMatch');
+    assert.optionalNumber(opts.threshold, 'options.threshold');
+    assert.optionalNumber(opts.timeout, 'options.timeout');
+
+    var down = false;
+    var ee = new EventEmitter();
+    var fails = [];
+    var interval = opts.interval || 60000;
+    var _opts = {
+        cwd: null,
+        env: null,
+        encoding: 'utf8',
+        killSignal: 'SIGTERM',
+        maxBuffer: 1024 * 1024,
+        timeout: opts.timeout || 1000
+    };
+    var threshold = opts.threshold || 5;
+
+    function markDown(err) {
+        LOG.debug(err, 'healthCheck: %s failed', opts.command);
+        ee.emit('fail', err);
+        if (!down) {
+            fails.push(new verror.WError(err, opts.command + ' failed'));
+
+            if (fails.length === threshold) {
+                down = true;
+                ee.emit('error', new verror.MultiError(fails));
+                process.nextTick(function () {
+                    fails.length = 0;
+                });
+            }
+        }
+    }
+
+    function check() {
+        LOG.debug('healthCheck: running %s', opts.command);
+
+        exec(opts.command, _opts, function (err, stdout, stderr) {
+            var ok = true;
+            if (err && !opts.ignoreExitStatus) {
+                markDown(err);
+                ok = false;
+            } else if (opts.stdoutMatch) {
+                assert.optionalString(opts.stdoutMatch.flags,
+                                      'options.stdoutMatch.flags');
+                assert.optionalBool(opts.stdoutMatch.invert,
+                                    'options.stdoutMatch.invert');
+                assert.string(opts.stdoutMatch.pattern,
+                              'options.stdoutMatch.pattern');
+
+                LOG.debug('healthCheck: matching stdout %s against %s',
+                          opts.stdoutMatch.pattern, stdout);
+                var re = new RegExp(opts.stdoutMatch.pattern,
+                                    opts.stdoutMatch.flags);
+
+                if (!re.test(stdout)) {
+                    var re_err = new Error('stdout match (' +
+                                           opts.stdoutMatch.pattern +
+                                           ') failed');
+                    re_err.code = -1;
+                    markDown(re_err);
+                    ok = false;
+                }
+            }
+
+            if (ok) {
+                LOG.debug('healthCheck: %s ok', opts.command);
+                ee.emit('ok');
+                down = false;
+                fails.length = 0;
+            }
+
+            setTimeout(check, interval);
+        });
+    }
+
+    setTimeout(check, interval);
+
+    return (ee);
+}
+
+
 function removeOldEntryFunc(path) {
     assert.string(path, 'path');
 
-    return (function (opts, cb) {
+    return (function _remove(opts, cb) {
         assert.object(opts, 'options');
         assert.string(opts.domain, 'opts.domain');
         assert.object(opts.log, 'options.log');
@@ -244,19 +348,18 @@ function removeOldEntryFunc(path) {
 function removeOldEntries(opts, cb) {
     assert.object(opts, 'options');
     assert.string(opts.domain, 'opts.domain');
-    assert.object(opts.log, 'options.log');
     assert.arrayOfString(opts.aliases, 'options.aliases');
     assert.object(opts.zk, 'options.zk');
     assert.func(cb, 'callback');
 
     var funcs = [];
-    for (var i = 0; i < opts.aliases.length; ++i) {
-        funcs.push(removeOldEntryFunc(opts.aliases[i]));
-    }
+    aliases(opts).forEach(function (a) {
+        funcs.push(removeOldEntryFunc(a));
+    });
 
     vasync.pipeline({
-        'funcs': funcs,
-        'arg': opts
+        funcs: funcs,
+        arg: opts
     }, function (err, results) {
         if (err) {
             LOG.error(err, 'unable to remove old entries');
@@ -359,13 +462,13 @@ function registerEntries(opts, cb) {
     assert.func(cb, 'callback');
 
     var funcs = [];
-    for (var i = 0; i < opts.aliases.length; ++i) {
-        funcs.push(registerEntryFunc(opts.aliases[i]));
-    }
+    aliases(opts).forEach(function (a) {
+        funcs.push(registerEntryFunc(a));
+    });
 
     vasync.pipeline({
-        'funcs': funcs,
-        'arg': opts
+        funcs: funcs,
+        arg: opts
     }, function (err, results) {
         if (err) {
             LOG.error(err, 'unable to register entries');
@@ -441,26 +544,17 @@ function register(opts, cb) {
 
     var path = domainToPath(opts.domain);
 
-    // We always write a leadnode for ourselves.
-    var aliases = [ path + '/' + HOSTNAME ];
-
-    var oaliases = opts.registration.aliases || [];
-    for (var i = 0; i < oaliases.length; ++i) {
-        var p = domainToPath(oaliases[i]);
-        aliases.push(p);
-    }
-
     LOG.debug({
         domain: opts.domain,
         registration: opts.registration,
         path: path,
-        aliases: aliases
+        aliases: opts.registration.aliases
     }, 'registering');
 
     // Register $self in ZK depending on the type.
     vasync.pipeline({
         arg: {
-            aliases: aliases,
+            aliases: opts.registration.aliases || [],
             config: opts.config,
             domain: opts.domain,
             log: LOG,
@@ -503,6 +597,8 @@ function register(opts, cb) {
     }
     if (argv.help)
         usage();
+    if (!argv.file)
+        usage('file is required');
 
     var cfg = readConfig(argv);
 
@@ -516,52 +612,112 @@ function register(opts, cb) {
             LOG.info('ZooKeeper: connection reestablished');
         });
 
-        var rOpts =  {
-            config: cfg,
-            domain: cfg.registration.domain,
-            log: LOG,
-            registration: cfg.registration,
-            zk: zk
-        };
-
+        var heartbeatInterval = cfg.heartbeatInterval || 30000;
         var hCfg = cfg.heartbeat || {};
-        var retry = backoff.call(register, rOpts, function (err, res) {
-            if (err) {
-                LOG.fatal(err, 'registration failed');
-                process.exit(1);
-            }
+        var zkTimer;
 
-            var interval = cfg.heartbeatInterval || 30000;
-            function checkNodes() {
-                var opts = {
-                    config: hCfg,
-                    log: LOG,
-                    nodes: NODES,
-                    zk: zk
-                };
-                heartbeat(opts, function (check_err) {
-                    if (check_err) {
-                        LOG.fatal({
-                            err: check_err,
-                            nodes: NODES
-                        }, 'unable to see nodes in ZK');
-                        process.exit(1);
+        function _checkZK() {
+            var opts = {
+                config: hCfg,
+                log: LOG,
+                nodes: NODES,
+                zk: zk
+            };
+            heartbeat(opts, function (check_err) {
+                if (zkTimer === false)
+                    return;
+
+                if (check_err) {
+                    LOG.fatal({
+                        err: check_err,
+                        nodes: NODES
+                    }, 'unable to see nodes in ZK');
+                    process.exit(1);
+                }
+
+                LOG.debug('heartbeat of %j ok', NODES);
+                zkTimer = setTimeout(_checkZK, heartbeatInterval);
+            });
+        }
+
+        var registered = false;
+        var registering = true;
+        function _register(cb) {
+            var rOpts =  {
+                config: cfg,
+                domain: cfg.registration.domain,
+                log: LOG,
+                registration: cfg.registration,
+                zk: zk
+            };
+
+            var retry = backoff.call(register, rOpts, function (err, res) {
+                if (err) {
+                    LOG.fatal(err, 'registration failed');
+                    process.exit(1);
+                }
+
+                registered = true;
+                registering = false;
+                zkTimer = setTimeout(_checkZK, heartbeatInterval);
+                cb();
+            });
+            retry.failAfter(hCfg.maxAttempts || 30);
+            retry.setStrategy(new backoff.ExponentialStrategy({
+                initialDelay: hCfg.initialDelay || 1000,
+                maxDelay: hCfg.maxDelay || 30000
+            }));
+            retry.start();
+        }
+
+        var healthChecking = false;
+
+        function onRegistered() {
+            if (cfg.healthCheck && !healthChecking) {
+                healthChecking = true;
+
+                var health = healthCheck(cfg.healthCheck);
+
+                health.on('fail', function (err) {
+                    LOG.warn(err, 'health check failed');
+                });
+
+                health.on('error', function (err) {
+                    LOG.error(err, 'health checks failed; ' +
+                              'unregistering from ZooKeeper');
+                    var rm_opts = {
+                        aliases: cfg.registration.aliases || [],
+                        config: cfg,
+                        domain: cfg.registration.domain,
+                        log: LOG,
+                        registration: cfg.registration,
+                        zk: zk
+                    };
+
+                    clearTimeout(zkTimer);
+                    zkTimer = false;
+                    removeOldEntries(rm_opts, function (rm_err) {
+                        if (rm_err) {
+                            LOG.fatal(rm_err, 'unable to clean up entries');
+                            process.exit(1);
+                        }
+
+                        NODES.length = 0;
+                        registered = false;
+                    });
+                });
+
+                health.on('ok', function () {
+                    if (!registered && !registering) {
+                        LOG.info('health checks ok: re-registering ZK nodes');
+                        registering = true;
+                        _register(function () {});
                     }
-
-                    LOG.debug('heartbeat of %j ok', NODES);
-                    setTimeout(checkNodes, interval);
                 });
             }
+        }
 
-            setTimeout(checkNodes, interval);
-        });
-        retry.failAfter(hCfg.maxAttempts || 30);
-        retry.setStrategy(new backoff.ExponentialStrategy({
-            initialDelay: hCfg.initialDelay || 1000,
-            maxDelay: hCfg.maxDelay || 30000
-        }));
-        retry.start();
+        _register(onRegistered);
     });
-
 
 })();

@@ -3,17 +3,24 @@
         "domain": "test.bh1.joyent.us",
         "type": "host",
         "host": {
-            "address": "10.88.88.144"
+            "address": "10.88.88.145"
         }
     },
     "zookeeper": {
         "servers": [ {
-            "host": "10.2.201.7",
+            "host": "10.2.201.35",
             "port": 2181
         } ],
         "timeout": 6000
     },
-    "heartbeat": {
-        "maxAttempts": 5
+    "healthCheck": {
+        "command": "/opt/local/bin/date -u",
+        "ignoreExitStatus": false,
+        "stdoutMatch": {
+            "pattern": "^May\\s+7,\\s+\\d{4}\\s+\\d{2}:0[35]:\\d{2}\\s+[AP]M\\s+UTC"
+        },
+        "interval": 1000,
+        "threshold": 3,
+        "timeout": 1000
     }
 }
