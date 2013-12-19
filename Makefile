@@ -77,8 +77,7 @@ release: all docs $(SMF_MANIFESTS)
 	@touch $(RELSTAGEDIR)/site/.do-not-delete-me
 	@mkdir -p $(RELSTAGEDIR)/root
 	@mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar/etc
-	cp -r   $(ROOT)/build \
-		$(ROOT)/deps \
+	cp -r   $(ROOT)/deps \
 		$(ROOT)/main.js \
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
