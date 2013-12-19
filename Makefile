@@ -50,7 +50,7 @@ PATH	:= $(NODE_INSTALL)/bin:${PATH}
 
 RELEASE_TARBALL         := registrar-pkg-$(STAMP).tar.bz2
 ROOT                    := $(shell pwd)
-TMPDIR                  := /tmp/$(STAMP)
+RELSTAGEDIR             := /tmp/$(STAMP)
 
 #
 # Hack Variables
@@ -72,20 +72,25 @@ test:
 .PHONY: release
 release: all docs $(SMF_MANIFESTS)
 	@echo "Building $(RELEASE_TARBALL)"
-	@mkdir -p $(TMPDIR)/root/opt/smartdc/registrar
-	@mkdir -p $(TMPDIR)/site
-	@touch $(TMPDIR)/site/.do-not-delete-me
-	@mkdir -p $(TMPDIR)/root
-	@mkdir -p $(TMPDIR)/root/opt/smartdc/registrar/etc
+	@mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar
+	@mkdir -p $(RELSTAGEDIR)/site
+	@touch $(RELSTAGEDIR)/site/.do-not-delete-me
+	@mkdir -p $(RELSTAGEDIR)/root
+	@mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar/etc
 	cp -r   $(ROOT)/build \
 		$(ROOT)/deps \
 		$(ROOT)/main.js \
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
 		$(ROOT)/smf \
-		$(TMPDIR)/root/opt/smartdc/registrar
-	(cd $(TMPDIR) && $(TAR) -jcf $(ROOT)/$(RELEASE_TARBALL) root site)
-	@rm -rf $(TMPDIR)
+		$(RELSTAGEDIR)/root/opt/smartdc/registrar
+	mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar/build
+	cp -r \
+		$(ROOT)/build/node \
+		$(ROOT)/build/docs \
+		$(RELSTAGEDIR)/root/opt/smartdc/registrar/build
+	(cd $(RELSTAGEDIR) && $(TAR) -jcf $(ROOT)/$(RELEASE_TARBALL) root site)
+	@rm -rf $(RELSTAGEDIR)
 
 
 .PHONY: publish
