@@ -1,18 +1,18 @@
 {
-        "registration": {
-                "domain": "test.coal.joyent.us",
-                "type": "host",
-                "aliases": [
-                        "alias-1.test.coal.joyent.us"
-                ]
-        },
-        "zookeeper": {
-                "connectTimeout": 1000,
-                "servers": [ {
-                        "host": "10.99.99.11",
-                        "port": 2181
-                } ],
-                "timeout": 6000
-        },
-        "maxAttempts": 10
+    "registration": {
+        "domain": "test.coal.joyent.us",
+        "type": "host",
+        "aliases": [
+            "alias-1.test.coal.joyent.us"
+        ]
+    },
+    "zookeeper": {
+        "connectTimeout": 1000,
+        "servers": [ {
+            "host": "10.99.99.11",
+            "port": 2181
+        } ],
+        "timeout": 6000
+    },
+    "maxAttempts": 10
 }
