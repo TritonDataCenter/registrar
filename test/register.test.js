@@ -114,7 +114,10 @@ test('register: host only with adminIP', function (t) {
     register(cfg, t, function (n, obj) {
         t.deepEqual({
             type: 'host',
-            address: '127.0.0.1'
+            address: '127.0.0.1',
+            host: {
+                address: '127.0.0.1'
+            }
         }, obj);
     });
 });
@@ -135,6 +138,9 @@ test('register: host only with adminIP+ttl', function (t) {
         t.deepEqual({
             type: 'host',
             address: '127.0.0.1',
+            host: {
+                address: '127.0.0.1'
+            },
             ttl: 120
         }, obj);
     });
