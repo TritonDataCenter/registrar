@@ -130,6 +130,11 @@ function usage(help, msg) {
             });
         });
 
+        zk.on('session_expired', function force_restart() {
+            LOG.fatal('Zookeeper session_expired event; exiting');
+            process.exit(1);
+        });
+
 
         var is_down = false;
         var opts = clone(cfg.registration);
