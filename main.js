@@ -135,6 +135,8 @@ function usage(help, msg) {
             process.exit(1);
         });
 
+        // backward compatible with top-level 'adminIp' in configs.
+        cfg.registration.adminIp = cfg.registration.adminIp || cfg.adminIp;
 
         var is_down = false;
         var opts = clone(cfg.registration);
