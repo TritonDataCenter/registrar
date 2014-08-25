@@ -29,5 +29,6 @@
         "start": "node ./main.js -f ./etc/config.json -v | ./node_modules/.bin/bunyan",
         "report": "./node_modules/.bin/istanbul report --html && open ./coverage/lcov-report/index.html",
         "test": "./node_modules/.bin/istanbul test test/test.js | ./node_modules/.bin/faucet"
-    }
+    },
+    "license": "MPL-2.0"
 }

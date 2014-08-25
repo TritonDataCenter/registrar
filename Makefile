@@ -1,5 +1,13 @@
 #
-# Copyright (c) 2014, Joyent, Inc. All rights reserved.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+
+#
+# Copyright (c) 2014, Joyent, Inc.
+#
+
 #
 # Makefile: basic Makefile for template API service
 #
@@ -54,17 +62,11 @@ ROOT                    := $(shell pwd)
 RELSTAGEDIR             := /tmp/$(STAMP)
 
 #
-# Hack Variables
-#
-CXXFLAGS="-I$(TOP)/deps/zk/include"
-LDFLAGS="-L$(TOP)/deps/zk/lib -R/opt/smartdc/registrar/deps/zk/lib"
-
-#
 # Repo-specific targets
 #
 .PHONY: all
 all: $(SMF_MANIFESTS) | $(NPM_EXEC) $(REPO_DEPS)
-	CXXFLAGS=$(CXXFLAGS) LDFLAGS=$(LDFLAGS) $(NPM) install
+	$(NPM) install
 
 .PHONY: test
 test:
@@ -78,8 +80,7 @@ release: all docs $(SMF_MANIFESTS)
 	@touch $(RELSTAGEDIR)/site/.do-not-delete-me
 	@mkdir -p $(RELSTAGEDIR)/root
 	@mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar/etc
-	cp -r   $(ROOT)/deps \
-		$(ROOT)/lib \
+	cp -r   $(ROOT)/lib \
 		$(ROOT)/main.js \
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
