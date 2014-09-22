@@ -1,6 +1,6 @@
 ---
 title: registrar: registration agent for binder
-markdown2extras: wiki-tables, code-friendly
+markdown2extras: tables, code-friendly
 ---
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public
