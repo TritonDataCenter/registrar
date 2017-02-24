@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2014, Joyent, Inc.
+# Copyright (c) 2017, Joyent, Inc.
 #
 
 #
@@ -25,7 +25,6 @@
 #
 # Files
 #
-DOC_FILES	 = index.md
 JS_FILES	:= $(shell ls *.js)
 JSL_CONF_NODE	 = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
@@ -73,7 +72,7 @@ test:
 	@echo "No tests"
 
 .PHONY: release
-release: all docs $(SMF_MANIFESTS)
+release: all $(SMF_MANIFESTS)
 	@echo "Building $(RELEASE_TARBALL)"
 	@mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar
 	@mkdir -p $(RELSTAGEDIR)/site
@@ -89,7 +88,6 @@ release: all docs $(SMF_MANIFESTS)
 	mkdir -p $(RELSTAGEDIR)/root/opt/smartdc/registrar/build
 	cp -r \
 		$(ROOT)/build/node \
-		$(ROOT)/build/docs \
 		$(RELSTAGEDIR)/root/opt/smartdc/registrar/build
 	(cd $(RELSTAGEDIR) && $(TAR) -jcf $(ROOT)/$(RELEASE_TARBALL) root site)
 	@rm -rf $(RELSTAGEDIR)
