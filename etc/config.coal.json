@@ -9,10 +9,10 @@
     "zookeeper": {
         "connectTimeout": 1000,
         "servers": [ {
-            "host": "10.99.99.11",
+            "address": "10.99.99.11",
             "port": 2181
         } ],
-        "timeout": 6000
+        "sessionTimeout": 30000
     },
     "maxAttempts": 10
 }

@@ -188,9 +188,9 @@ not recommended.
 **zookeeper:** Service discovery records are maintained in a
 ZooKeeper cluster.  The `"zookeeper"` top-level property describes how to reach
 that cluster.  This should be a configuration block appropriate for
-[node-zkplus](http://github.com/mcavage/node-zkplus).  See that project for
-details, but there's an example below that includes `"timeout"` and `"servers"`
-properties.
+[node-zkstream](http://github.com/joyent/node-zkstream).  See that project for
+details, but there's an example below that includes `"sessionTimeout"` and
+`"servers"` properties.
 
 **registration:** The `"registration"` object describes the service discovery
 records that will be inserted into ZooKeeper.  These control the DNS names that
@@ -320,10 +320,10 @@ record.  This is not common.
         },
         "adminIp": "172.27.10.72",
         "zookeeper": {
-            "timeout": 60000,
-            "servers": [ { "host": "172.27.10.35", "port": 2181 },
-                         { "host": "172.27.10.32", "port": 2181 },
-                         { "host": "172.27.10.33", "port": 2181 } ]
+            "sessionTimeout": 60000,
+            "servers": [ { "address": "172.27.10.35", "port": 2181 },
+                         { "address": "172.27.10.32", "port": 2181 },
+                         { "address": "172.27.10.33", "port": 2181 } ]
         }
     }
 
@@ -392,10 +392,10 @@ Let's augment the configuration above to specify a service record:
         },
         "adminIp": "172.27.10.72",
         "zookeeper": {
-            "timeout": 60000,
-            "servers": [ { "host": "172.27.10.35", "port": 2181 },
-                         { "host": "172.27.10.32", "port": 2181 },
-                         { "host": "172.27.10.33", "port": 2181 } ]
+            "sessionTimeout": 60000,
+            "servers": [ { "address": "172.27.10.35", "port": 2181 },
+                         { "address": "172.27.10.32", "port": 2181 },
+                         { "address": "172.27.10.33", "port": 2181 } ]
         }
     }
 
