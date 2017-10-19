@@ -18,7 +18,7 @@
         "once": "1.3.0",
         "vasync": "1.5.0",
         "verror": "1.4.0",
-        "zkplus": "git://github.com/mcavage/node-zkplus.git#master"
+        "zkstream": "git://github.com/joyent/node-zkstream.git#f0f08c3"
     },
     "devDependencies": {
         "faucet": "0.0.1",

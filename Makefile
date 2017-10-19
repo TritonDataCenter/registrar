@@ -25,11 +25,11 @@ SMF_MANIFESTS_IN = smf/manifests/registrar.xml.in
 # RELENG-341: no npm cache is making builds unreliable
 NPM_FLAGS :=
 
-NODE_PREBUILT_VERSION=v0.10.48
+NODE_PREBUILT_VERSION=v0.12.9
 ifeq ($(shell uname -s),SunOS)
 	NODE_PREBUILT_TAG=zone
 	# Use sdcnode built for multiarch-15.4.1
-	NODE_PREBUILT_IMAGE=18b094b0-eb01-11e5-80c1-175dac7ddf02
+	NODE_PREBUILT_IMAGE=fd2cc906-8938-11e3-beab-4359c665ac99
 endif
 
 

@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2018, Joyent, Inc.
  */
 
 var fs = require('fs');
@@ -44,6 +44,7 @@ var OPTIONS = [
         helpArg: 'FILE'
     }
 ];
+var DEFAULT_SESSION_TIMEOUT = 30000;
 
 
 
@@ -77,6 +78,45 @@ function configure(argv) {
 
     assert.object(cfg.zookeeper, 'config.zookeeper');
     assert.optionalObject(cfg.healthCheck, 'config.healthCheck');
+
+    /*
+     * MANTA-3536 - if registrar is passed a config that specifies the ip
+     * address of zookeeper server(s) with the 'host' field, copy the value into
+     * a new 'address' field, which is what node-zkstream expects.
+     */
+    var servers = cfg.zookeeper.servers;
+    var usesOldConfig = false;
+
+    if (servers) {
+        servers.forEach(function (server) {
+            if (!server.address) {
+                usesOldConfig = true;
+                server.address = server.host;
+            }
+        });
+    } else {
+        if (!cfg.zookeeper.address) {
+            usesOldConfig = true;
+            cfg.zookeeper.address = cfg.zookeeper.host;
+        }
+    }
+
+    /*
+     * MANTA-3536 - node-zkstream uses the option 'sessionTimeout' instead of
+     * 'timeout'. Older configs aimed at node-zkplus will specify the timeout
+     * using 'timeout' field, so we translate it here for backwards
+     * compatibility.
+     */
+    if (!cfg.zookeeper.sessionTimeout) {
+        usesOldConfig = true;
+        cfg.zookeeper.sessionTimeout = cfg.zookeeper.timeout ||
+            DEFAULT_SESSION_TIMEOUT;
+    }
+
+    if (usesOldConfig) {
+        LOG.warn('registrar configuration uses old zookeeper options, ' +
+                'converting to new format and continuing');
+    }
 
     cfg.zookeeper.log = LOG;
 
@@ -121,32 +161,12 @@ function usage(help, msg) {
 
     var cfg = configure(argv);
 
-    app.createZKClient(cfg.zookeeper, function (init_err, zk) {
-        if (init_err) {
-            LOG.fatal(init_err, 'unable to create ZooKeeper client');
-            process.exit(1);
-        }
-
-        zk.on('close', function () {
-            LOG.warn('zookeeper: disconnected');
-        });
-
-        // annoyingly this fires twice, so ignore the first one
-        zk.once('connect', function () {
-            zk.on('connect', function () {
-                LOG.info('zookeeper: reconnected');
-            });
-        });
-
-        zk.on('session_expired', function force_restart() {
-            LOG.fatal('Zookeeper session_expired event; exiting');
-            process.exit(1);
-        });
+    app.createZKClient(cfg.zookeeper, function (zk) {
+        assert.object(zk, 'zk');
 
         // backward compatible with top-level 'adminIp' in configs.
         cfg.registration.adminIp = cfg.registration.adminIp || cfg.adminIp;
 
-        var is_down = false;
         var opts = clone(cfg.registration);
         if (cfg.healthCheck) {
             opts.healthCheck = clone(cfg.healthCheck);
@@ -155,46 +175,111 @@ function usage(help, msg) {
         }
         opts.log = LOG;
         opts.registration = cfg.registration;
+        opts.sessionTimeout = cfg.zookeeper.sessionTimeout;
         opts.zk = zk;
 
-        var eventStream = app(opts);
+        var registrar = app.createRegistrar(opts);
 
-        eventStream.on('fail', function (err) {
-            LOG.error(err, 'registrar: healthcheck failed');
+        /*
+         * If registrar.zk is null, this meant that there has already been an
+         * event that triggered the termination of the session, and we can
+         * safely exit. Otherwise, the work has to be done here.
+         */
+        function unregisterAndExit(signal) {
+            if (registrar.zk === null) {
+                LOG.debug('registrar: received ' + signal + ', but the zk ' +
+                        'session is already terminated.');
+                process.exit(0);
+            }
+            LOG.info('registrar: received ' + signal + ', unregistering ' +
+                    'ephemeral nodes.');
+            var unregisterOpts = {
+                log: LOG,
+                zk: zk
+            };
+            app.unregister(unregisterOpts, registrar, function (err) {
+                if (err) {
+                    LOG.debug(err, 'registrar: unexpected error ' +
+                        'unregistering nodes');
+                }
+                process.exit(0);
+            });
+        }
+
+        var exitSignals = [
+            'SIGTERM',
+            'SIGINT'
+        ];
+
+        exitSignals.forEach(function (signal) {
+            process.on(signal, function () {
+                unregisterAndExit(signal);
+            });
         });
 
-        eventStream.on('ok', function () {
-            LOG.info('registrar: healthcheck ok (was down)');
+        // node-zkstream events
+        zk.on('connect', function () {
+            LOG.info('zookeeper: connected');
         });
 
-        eventStream.on('error', function (err) {
-            LOG.error(err, 'registrar: unexpected error');
+        zk.on('close', function () {
+            LOG.warn('zookeeper: disconnected');
         });
 
-        eventStream.on('register', function (nodes) {
-            LOG.info({
-                znodes: nodes
-            }, 'registrar: registered');
+
+        zk.on('session', function () {
+            LOG.info('zookeeper: session established');
+
+            registrar.registerOnNewSession(function (rerr) {
+                if (rerr) {
+                    LOG.error(rerr, 'registration(%j) failed this session. ',
+                        opts.registration);
+                    return;
+                }
+                LOG.debug('registration successful for session generation ' +
+                    registrar.getSessionGeneration());
+
+                if (registrar.hasHealthCheck()) {
+                    return;
+                }
+
+                var healthCheckEvents = registrar.createHealthCheck();
+
+                // health-check events
+                healthCheckEvents.on('fail', function (err) {
+                    LOG.error(err, 'registrar: healthcheck failed');
+                });
+
+                healthCheckEvents.on('ok', function () {
+                    LOG.info('registrar: healthcheck ok (was down)');
+                });
+
+                healthCheckEvents.on('error', function (err) {
+                    LOG.error(err, 'registrar: unexpected error');
+                });
+
+                healthCheckEvents.on('register', function (nodes) {
+                    LOG.info({
+                        znodes: nodes
+                    }, 'registrar: registered');
+                });
+
+                healthCheckEvents.on('unregister', function (err, nodes) {
+                    LOG.warn({
+                        err: err,
+                        znodes: nodes
+                    }, 'registrar: unregistered');
+                });
+
+            });
         });
 
-        eventStream.on('unregister', function (err, nodes) {
-            LOG.warn({
-                err: err,
-                znodes: nodes
-            }, 'registrar: unregistered');
+        zk.on('expire', function () {
+            LOG.warn('zookeeper: session expired');
         });
 
-        eventStream.on('heartbeatFailure', function (err) {
-            if (!is_down)
-                LOG.error(err, 'zookeeper: heartbeat failed');
-            is_down = true;
-        });
-
-        eventStream.on('heartbeat', function () {
-            if (is_down)
-                LOG.info('zookeeper heartbeat ok');
-
-            is_down = false;
+        zk.on('failed', function () {
+            LOG.warn('zookeeper: failed');
         });
     });
 })();
