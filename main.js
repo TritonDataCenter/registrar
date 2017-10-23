@@ -14,6 +14,7 @@ var assert = require('assert-plus');
 var bunyan = require('bunyan');
 var clone = require('clone');
 var dashdash = require('dashdash');
+var register = require('./lib/register');
 
 var app = require('./lib');
 
@@ -169,6 +170,41 @@ function usage(help, msg) {
 
         eventStream.on('error', function (err) {
             LOG.error(err, 'registrar: unexpected error');
+        });
+
+        // Once the register event is triggered, we know that the
+        // service will appear in binder. The SIGTERM signal is
+        // sent from the smf stop method of registrar to trigger
+        // an immediate removal from DNS. This is useful for
+        // undeploying services without disruption. If the stop
+        // method is executed before registrar can register,
+        // the process will just terminate. This is fine because
+        // the corresponding service hasn't been added to zookeeper
+        // yet.
+        eventStream.once('register', function (nodes) {
+            process.on('SIGTERM', function () {
+                opts.log.info({
+                    znodes: nodes
+                }, 'unregistering nodes upon SIGTERM receipt');
+                var unopts = {
+                    log: opts.log,
+                    zk: opts.zk,
+                    znodes: nodes
+                };
+                // This is not perfect because it's possible that
+                // the smf stop method is invoked right after
+                // registrar failed a health check, in which case
+                // we would unregister nodes that are already gone.
+                register.unregister(unopts, function (err) {
+                    if (err) {
+                        opts.log.debug(err, 'unregister failure on sigterm');
+                    } else {
+                        opts.log.debug('unregistered nodes on sigterm, ' +
+                            'terminating');
+                    }
+                    process.exit(0);
+                });
+            });
         });
 
         eventStream.on('register', function (nodes) {
