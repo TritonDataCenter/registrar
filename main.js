@@ -78,6 +78,44 @@ function configure(argv) {
     assert.object(cfg.zookeeper, 'config.zookeeper');
     assert.optionalObject(cfg.healthCheck, 'config.healthCheck');
 
+    /*
+     * MANTA-3536 - if registrar is passed a config that specifies the ip
+     * address of zookeeper server(s) with the 'host' field, copy the value into
+     * a new 'address' field, which is what node-zkstream expects.
+     */
+    var servers = cfg.zookeeper.servers;
+    var usesOldConfig = false;
+
+    if (servers) {
+        servers.forEach(function (server) {
+            if (!server.address) {
+                usesOldConfig = true;
+                server.address = server.host;
+            }
+        });
+    } else {
+        if (!cfg.zookeeper.address) {
+            usesOldConfig = true;
+            cfg.zookeeper.address = cfg.zookeeper.host;
+        }
+    }
+
+    /*
+     * MANTA-3536 - node-zkstream uses the option 'sessionTimeout' instead of
+     * 'timeout'. Older configs aimed at node-zkplus will specify the timeout
+     * using 'timeout' field, so we translate it here for backwards
+     * compatibility.
+     */
+    if (!cfg.zookeeper.sessionTimeout) {
+        usesOldConfig = true;
+        cfg.zookeeper.sessionTimeout = cfg.zookeeper.timeout;
+    }
+
+    if (usesOldConfig) {
+        LOG.warn('registrar configuration uses old zookeeper options, ' +
+                'converting to new format and continuing');
+    }
+
     cfg.zookeeper.log = LOG;
 
     return (cfg);
@@ -154,10 +192,9 @@ function usage(help, msg) {
                     'ephemeral nodes.');
             var unregisterOpts = {
                 log: LOG,
-                zk: zk,
-                registrar: registrar
+                zk: zk
             };
-            app.unregister(unregisterOpts, function (err) {
+            app.unregister(unregisterOpts, registrar, function (err) {
                 if (err) {
                     LOG.debug(err, 'registrar: unexpected error ' +
                         'unregistering nodes');
