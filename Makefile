@@ -5,21 +5,7 @@
 #
 
 #
-# Copyright (c) 2017, Joyent, Inc.
-#
-
-#
-# Makefile: basic Makefile for template API service
-#
-# This Makefile is a template for new repos. It contains only repo-specific
-# logic and uses included makefiles to supply common targets (javascriptlint,
-# jsstyle, restdown, etc.), which are used by other repos as well. You may well
-# need to rewrite most of this file, but you shouldn't need to touch the
-# included makefiles.
-#
-# If you find yourself adding support for new targets that could be useful for
-# other projects too, you should add these to the original versions of the
-# included Makefiles (in eng.git) so that other teams can use them too.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
 #
@@ -35,16 +21,26 @@ SMF_MANIFESTS_IN = smf/manifests/registrar.xml.in
 #
 # Variables
 #
-NODE_PREBUILT_TAG	= zone
-NODE_PREBUILT_VERSION	:= v0.10.26
-NODE_PREBUILT_IMAGE     = fd2cc906-8938-11e3-beab-4359c665ac99
 
 # RELENG-341: no npm cache is making builds unreliable
 NPM_FLAGS :=
 
+NODE_PREBUILT_VERSION=v0.10.48
+ifeq ($(shell uname -s),SunOS)
+	NODE_PREBUILT_TAG=zone
+	# Use sdcnode built for multiarch-15.4.1
+	NODE_PREBUILT_IMAGE=18b094b0-eb01-11e5-80c1-175dac7ddf02
+endif
+
+
 include ./tools/mk/Makefile.defs
-include ./tools/mk/Makefile.node_prebuilt.defs
-include ./tools/mk/Makefile.node_deps.defs
+ifeq ($(shell uname -s),SunOS)
+	include ./tools/mk/Makefile.node_prebuilt.defs
+else
+	NPM_EXEC :=
+	NPM = npm
+	NODE = node
+endif
 include ./tools/mk/Makefile.smf.defs
 
 #
@@ -104,7 +100,8 @@ publish: release
 
 
 include ./tools/mk/Makefile.deps
-include ./tools/mk/Makefile.node_prebuilt.targ
-include ./tools/mk/Makefile.node_deps.targ
+ifeq ($(shell uname -s),SunOS)
+	include ./tools/mk/Makefile.node_prebuilt.targ
+endif
 include ./tools/mk/Makefile.smf.targ
 include ./tools/mk/Makefile.targ
