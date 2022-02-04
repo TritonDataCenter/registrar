@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2019, Joyent, Inc.
+# Copyright 2022 Joyent, Inc.
 #
 
 #
@@ -25,7 +25,7 @@ SMF_MANIFESTS_IN = smf/manifests/registrar.xml.in
 # RELENG-341: no npm cache is making builds unreliable
 NPM_FLAGS :=
 
-NODE_PREBUILT_VERSION=v0.10.48
+NODE_PREBUILT_VERSION=v6.17.0
 ifeq ($(shell uname -s),SunOS)
 	NODE_PREBUILT_TAG=zone
 	# Use sdcnode built for multiarch-15.4.1
