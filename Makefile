@@ -67,8 +67,8 @@ all: $(SMF_MANIFESTS) | $(NPM_EXEC) $(REPO_DEPS)
 	$(NPM) install
 
 .PHONY: test
-test:
-	@echo "No tests"
+test: all
+	$(NPM) test
 
 .PHONY: release
 release: all $(SMF_MANIFESTS)

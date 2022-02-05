@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright 2022 Joyent, Inc.
  */
 
 var net = require('net');
@@ -60,6 +60,9 @@ test('start zk client', function (t) {
         t.ifError(err);
         t.ok(client);
         t.equal(typeof (client.heartbeat), 'function');
+        client.on('close', function teardown() {
+            process.exit();
+        });
         client.close(function (err2) {
             t.ifError(err2);
             t.end();
