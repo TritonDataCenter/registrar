@@ -2,7 +2,7 @@
     "name": "registrar",
     "description": "Agent to register with binder",
     "version": "1.0.1",
-    "author": "Joyent (joyent.com)",
+    "author": "MNX Cloud (mnx.io)",
     "private": true,
     "engines": {
         "node": ">=0.10"
@@ -18,7 +18,7 @@
         "once": "1.3.0",
         "vasync": "1.5.0",
         "verror": "1.4.0",
-        "zkplus": "git+https://github.com/joyent/node-zkplus.git#a0a19240c13155cc9545a476e2b682462dc55d53"
+        "zkplus": "git+https://github.com/TritonDataCenter/node-zkplus.git#a0a19240c13155cc9545a476e2b682462dc55d53"
     },
     "devDependencies": {
         "faucet": "0.0.1",
