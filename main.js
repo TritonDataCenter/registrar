@@ -5,7 +5,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2017, Joyent, Inc.
  */
 
 var fs = require('fs');
@@ -169,6 +169,38 @@ function usage(help, msg) {
 
         eventStream.on('error', function (err) {
             LOG.error(err, 'registrar: unexpected error');
+        });
+
+        /*
+         * Receiving a 'register' event is an indication that registrar
+         * successfully create ephemeral nodes representing the SAPI instance
+         * running in this zone.
+         *
+         * At this point, we register a signal handler that proactively removes
+         * those ephemeral nodes. This is a best effort approach. If removing
+         * the nodes fails for whatever reason, they will drop out of DNS after
+         * the session that those nodes were associated with expires.
+         */
+        eventStream.once('register', function (nodes) {
+            process.on('SIGTERM', function () {
+                opts.log.info({
+                    znodes: nodes
+                }, 'unregistering nodes upon SIGTERM receipt');
+                var unopts = {
+                    log: opts.log,
+                    zk: opts.zk,
+                    znodes: nodes
+                };
+                app.unregister(unopts, function (err) {
+                    if (err) {
+                        opts.log.warn(err, 'unregister failure on SIGTERM');
+                    } else {
+                        opts.log.warn('unregistered nodes on SIGTERM, ' +
+                            'terminating');
+                    }
+                    process.exit(0);
+                });
+            });
         });
 
         eventStream.on('register', function (nodes) {
